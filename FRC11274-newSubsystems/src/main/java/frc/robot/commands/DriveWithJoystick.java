@@ -29,12 +29,13 @@ public class DriveWithJoystick extends Command {
   private final PIDController pidController = new PIDController(0.03, 0.0, 0); //TUNE THIS
   private BooleanSupplier alignToHub, rotateJoystick;
 
-  public DriveWithJoystick(SwerveDriveSubsystem swerveDrive, CommandXboxController controller, TelemetrySubsystem telemetrySubsystem, BooleanSupplier alignToHub, BooleanSupplier rotateJoystick) {
+  
+
+  public DriveWithJoystick(SwerveDriveSubsystem swerveDrive, CommandXboxController controller, TelemetrySubsystem telemetrySubsystem, BooleanSupplier alignToHub) {
     m_swerveDrive = swerveDrive;
     m_controller = controller;
     m_telemetrySubsystem = telemetrySubsystem;
     this.alignToHub = alignToHub;
-    this.rotateJoystick = rotateJoystick;
     addRequirements(m_swerveDrive);
     pidController.enableContinuousInput(-180, 180);
   }
@@ -78,10 +79,6 @@ public class DriveWithJoystick extends Command {
       rot = MathUtil.clamp(-pidController.calculate(currentDeg, targetDeg), -0.5, 0.5);
     }
     
-    if(rotateJoystick.getAsBoolean()){
-      rot = m_controller.getRightX();
-      rot = Math.abs(rot) > OIConstants.CONTROLLER_DEADBAND ? rot : 0.0;
-    }
     
     ChassisSpeeds chassisSpeeds = new ChassisSpeeds(
       xSpeed * SwerveDriveConstants.MAX_DRIVE_SPEED, ySpeed *SwerveDriveConstants.MAX_DRIVE_SPEED, rot*SwerveDriveConstants.MAX_ROTATE_SPEED);

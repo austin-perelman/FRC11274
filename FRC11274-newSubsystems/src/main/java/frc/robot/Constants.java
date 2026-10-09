@@ -98,17 +98,7 @@ public final class Constants {
     public static final double FEEDER_SPEED = -0.8;
   }
 
-  public static final class FunnelConstants {
-    public static final String CANbus = "rio";
-    public static final int FUNNEL_ID = 32; 
-
-    public static final double FUNNEL_SPEED = 0.4; // duty cycle, flip the sign if it spins the wrong way
-    public static final double START_TOLERANCE_RPS = 3.0; // funnel starts when shooter is this close to target
-    public static final double GEAR_RATIO = 4.0;
-
-    public static final double SUPPLY_CURRENT_LIMIT = 30;
-    public static final double STATOR_CURRENT_LIMIT = 30;
-}
+  
 
   public static final class ClimberConstants{
     public static final int CLIMBER_ID = 4;

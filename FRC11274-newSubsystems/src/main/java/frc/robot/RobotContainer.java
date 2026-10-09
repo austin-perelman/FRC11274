@@ -4,7 +4,10 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
@@ -24,6 +27,7 @@ import frc.robot.subsystems.Pigeon;
 import frc.robot.subsystems.ShooterSubsystem;
 import frc.robot.subsystems.SwerveDriveSubsystem;
 import frc.robot.subsystems.TelemetrySubsystem;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 
 /**
@@ -59,14 +63,12 @@ public class RobotContainer {
     m_shooterSubsystem.setDefaultCommand(m_shooterSubsystem.setDutyCycle(0));
 
     m_swerveDriveSubsystem.setDefaultCommand(
-  new DriveWithJoystick( //
-    m_swerveDriveSubsystem, 
-    m_driverController, 
+  new DriveWithJoystick(
+    m_swerveDriveSubsystem,
+    m_driverController,
     m_telemetrySubsystem,
-    () -> m_driverController.getHID().getLeftBumperButton(), //Hub Align, this overrides
-    () -> m_driverController.getLeftTriggerAxis() > 0.5 //Joystick rotate
-    ));
-    // 
+    () -> m_driverController.getHID().getLeftBumperButton() //Hub Align, this overrides
+  ));
 
     LimelightHelpers.setupPortForwardingUSB(0);
   }
@@ -93,19 +95,22 @@ public class RobotContainer {
     m_driverController.b().whileTrue(Commands.deferredProxy(() -> m_shooterSubsystem.shootSequence(ShooterConstants.FEEDER_SPEED, 39)));
 
     //MANUAL FUNNEL
-    m_driverController.y().whileTrue(m_shooterSubsystem.runFunnelManual());
+    //m_driverController.y().whileTrue(m_shooterSubsystem.runFunnelManual());
     
     //TREE MAP SHOOTING
-    // m_driverController.y().whileTrue(
-    //  m_shooterSubsystem.shootSequence(
-    //    ShooterConstants.FEEDER_SPEED,
-    //    m_telemetrySubsystem::getRPSForPosition,
-    //    () -> m_telemetrySubsystem.isAimed() && m_telemetrySubsystem.inShootingRange()
-    //  )
-    //);
+    m_driverController.y().whileTrue(
+    m_shooterSubsystem.shootSequenceTreeMap(
+        ShooterConstants.FEEDER_SPEED,
+        m_telemetrySubsystem::getRPSForPosition));
 
 
+    //TEMP TUNING FOR TREE MAP
+    SmartDashboard.putNumber("Tuning RPS", 37);
 
+    m_driverController.back().whileTrue(Commands.deferredProxy(() ->
+    m_shooterSubsystem.shootSequence(
+        ShooterConstants.FEEDER_SPEED,
+        SmartDashboard.getNumber("Tuning RPS", 37))));
 
     //SHOOT WITH TREE MAP AND ALIGN
     // m_driverController.x().whileTrue(
