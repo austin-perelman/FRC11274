@@ -63,13 +63,14 @@ public class DriveWithJoystick extends Command {
     //ySpeed *= (1/(mag));
     //System.out.println(mag);
     if (Math.abs(rotMag) > OIConstants.CONTROLLER_DEADBAND) { 
-      double joystickAngle = m_swerveDrive.findAngles(new double[] {m_controller.getRightX(), -m_controller.getRightY()});
-      double targetHeading = joystickAngle - 90;
-      if(m_telemetrySubsystem.getAlliance() == DriverStation.Alliance.Red){
+      //double joystickAngle = m_swerveDrive.findAngles(new double[] {m_controller.getRightX(), -m_controller.getRightY()});
+      //double targetHeading = joystickAngle - 90;
+      //if(m_telemetrySubsystem.getAlliance() == DriverStation.Alliance.Red){
        //targetHeading+=180;
-      }
-      double currentHeading = m_telemetrySubsystem.getPose().getRotation().getDegrees();
-      rot = -pidController.calculate(currentHeading, targetHeading);
+      //}
+      //double currentHeading = m_telemetrySubsystem.getPose().getRotation().getDegrees();
+      //rot = -pidController.calculate(currentHeading, targetHeading);
+      rot = -m_controller.getRightX(); // uses direct control instead of the 180 degree lock
     }
 
     if(alignToHub.getAsBoolean()){
@@ -79,7 +80,7 @@ public class DriveWithJoystick extends Command {
     }
     
     if(rotateJoystick.getAsBoolean()){
-      rot = m_controller.getRightX();
+      rot = -m_controller.getRightX();
       rot = Math.abs(rot) > OIConstants.CONTROLLER_DEADBAND ? rot : 0.0;
     }
     
