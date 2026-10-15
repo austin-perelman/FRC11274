@@ -4,96 +4,103 @@
 
 package frc.robot.commands;
 
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import frc.robot.Constants;
 import frc.robot.Constants.OIConstants;
 import frc.robot.Constants.SwerveDriveConstants;
 import frc.robot.subsystems.SwerveDriveSubsystem;
 import frc.robot.subsystems.TelemetrySubsystem;
 import java.util.function.BooleanSupplier;
-import edu.wpi.first.math.MathUtil;
 
-/** An example command that uses an example subsystem. */
+/**
+ * Field-oriented teleop drive.
+ *
+ * <ul>
+ *   <li>Left stick: translation
+ *   <li>Right stick X: continuous rotation rate (always active, can spin any number of times)
+ *   <li>alignToHub (left bumper): overrides rotation and points the robot at the hub
+ * </ul>
+ */
 public class DriveWithJoystick extends Command {
+  // --- Hub align tuning ---
+  /** Flip to +1.0 if the robot turns AWAY from the hub while aligning. */
+  private static final double ALIGN_SIGN = -1.0;
+  /** Output (normalized, 1.0 = MAX_ROTATE_SPEED) per degree of error. */
+  private static final double ALIGN_KP = 0.06;
+  /** Minimum output while outside tolerance, enough to overcome friction. Tune this. */
+  private static final double ALIGN_MIN_OUT = 0.10;
+  /** Stop turning once within this many degrees of the target. */
+  private static final double ALIGN_TOL_DEG = 1.5;
+
   private final SwerveDriveSubsystem m_swerveDrive;
-  private final CommandXboxController  m_controller;
+  private final CommandXboxController m_controller;
   private final TelemetrySubsystem m_telemetrySubsystem;
+  private final BooleanSupplier alignToHub;
 
-  private final PIDController pidController = new PIDController(0.03, 0.0, 0); //TUNE THIS
-  private BooleanSupplier alignToHub, rotateJoystick;
-
-  
-
-  public DriveWithJoystick(SwerveDriveSubsystem swerveDrive, CommandXboxController controller, TelemetrySubsystem telemetrySubsystem, BooleanSupplier alignToHub) {
+  public DriveWithJoystick(
+      SwerveDriveSubsystem swerveDrive,
+      CommandXboxController controller,
+      TelemetrySubsystem telemetrySubsystem,
+      BooleanSupplier alignToHub) {
     m_swerveDrive = swerveDrive;
     m_controller = controller;
     m_telemetrySubsystem = telemetrySubsystem;
     this.alignToHub = alignToHub;
+
     addRequirements(m_swerveDrive);
-    pidController.enableContinuousInput(-180, 180);
   }
 
-  // Called when the command is initially scheduled.
   @Override
   public void initialize() {}
 
-  // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
-    // Get driver inputs from the sticks
-
-    double xSpeed = m_controller.getLeftX(); 
+    // Translation (left stick), circular deadband
+    double xSpeed = m_controller.getLeftX();
     double ySpeed = -m_controller.getLeftY();
-    double rot = 0; //rotate with joystick
-    //System.out.println("rot speed normal: " + rot);
-
-    double mag = Math.sqrt(Math.pow(ySpeed, 2) + Math.pow(xSpeed, 2));
-    double rotMag = Math.sqrt(Math.pow(m_controller.getRightX(), 2) + Math.pow(m_controller.getRightY(), 2));
-    if(mag < OIConstants.CONTROLLER_DEADBAND) {
+    if (Math.hypot(xSpeed, ySpeed) < OIConstants.CONTROLLER_DEADBAND) {
       xSpeed = 0.0;
       ySpeed = 0.0;
     }
-    //xSpeed *= (1/(mag));
-    //ySpeed *= (1/(mag));
-    //System.out.println(mag);
-    if (Math.abs(rotMag) > OIConstants.CONTROLLER_DEADBAND) { 
-      double joystickAngle = m_swerveDrive.findAngles(new double[] {m_controller.getRightX(), -m_controller.getRightY()});
-      double targetHeading = joystickAngle - 90;
-      if(m_telemetrySubsystem.getAlliance() == DriverStation.Alliance.Red){
-       //targetHeading+=180;
-      }
-      double currentHeading = m_telemetrySubsystem.getPose().getRotation().getDegrees();
-      rot = -pidController.calculate(currentHeading, targetHeading);
+
+    // Rotation rate (right stick X), always active. Positive = clockwise in this drive's convention.
+    double rot = m_controller.getRightX();
+    if (Math.abs(rot) < OIConstants.CONTROLLER_DEADBAND) {
+      rot = 0.0;
     }
 
-    if(alignToHub.getAsBoolean()){
+    // Hub align overrides manual rotation while held
+    if (alignToHub.getAsBoolean()) {
       double currentDeg = m_telemetrySubsystem.getPose().getRotation().getDegrees();
-      double targetDeg  = m_telemetrySubsystem.targetRotationToHub().getDegrees();
-      rot = MathUtil.clamp(-pidController.calculate(currentDeg, targetDeg), -0.5, 0.5);
-    }
-    
-    
-    ChassisSpeeds chassisSpeeds = new ChassisSpeeds(
-      xSpeed * SwerveDriveConstants.MAX_DRIVE_SPEED, ySpeed *SwerveDriveConstants.MAX_DRIVE_SPEED, rot*SwerveDriveConstants.MAX_ROTATE_SPEED);
+      double targetDeg = m_telemetrySubsystem.targetRotationToHub().getDegrees();
+      double error = MathUtil.inputModulus(targetDeg - currentDeg, -180.0, 180.0);
 
-    m_swerveDrive.drive(chassisSpeeds, true);
+      double out = 0.0;
+      if (Math.abs(error) > ALIGN_TOL_DEG) {
+        out = ALIGN_KP * error + Math.copySign(ALIGN_MIN_OUT, error);
+      }
+      rot = MathUtil.clamp(ALIGN_SIGN * out, -1.0, 1.0);
+
+      SmartDashboard.putNumber("Align error deg", error);
+      SmartDashboard.putNumber("Align out", rot);
+    }
+
+    m_swerveDrive.drive(
+        new ChassisSpeeds(
+            xSpeed * SwerveDriveConstants.MAX_DRIVE_SPEED,
+            ySpeed * SwerveDriveConstants.MAX_DRIVE_SPEED,
+            rot * SwerveDriveConstants.MAX_ROTATE_SPEED),
+        true);
   }
 
-  // Called once the command ends or is interrupted.
   @Override
   public void end(boolean interrupted) {
-    // Stop the robot when the command stops
     m_swerveDrive.drive(new ChassisSpeeds(0, 0, 0), true);
   }
 
-  // Returns true when the command should end.
   @Override
   public boolean isFinished() {
     return false;
