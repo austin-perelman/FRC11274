@@ -27,13 +27,17 @@ import java.util.function.BooleanSupplier;
 public class DriveWithJoystick extends Command {
   // --- Hub align tuning ---
   /** Flip to +1.0 if the robot turns AWAY from the hub while aligning. */
-  private static final double ALIGN_SIGN = 1.0;
+  private static final double ALIGN_SIGN = -1.0;
   /** Output (normalized, 1.0 = MAX_ROTATE_SPEED) per degree of error. */
   private static final double ALIGN_KP = 0.06;
   /** Minimum output while outside tolerance, enough to overcome friction. Tune this. */
   private static final double ALIGN_MIN_OUT = 0.5;
   /** Stop turning once within this many degrees of the target. */
   private static final double ALIGN_TOL_DEG = 3;
+
+  
+private static final double ALIGN_KD = 0.004;   // damping, per deg/s of gyro rate
+
 
   private final SwerveDriveSubsystem m_swerveDrive;
   private final CommandXboxController m_controller;
@@ -77,10 +81,11 @@ public class DriveWithJoystick extends Command {
       double currentDeg = m_telemetrySubsystem.getPose().getRotation().getDegrees();
       double targetDeg = m_telemetrySubsystem.targetRotationToHub().getDegrees();
       double error = MathUtil.inputModulus(targetDeg - currentDeg, -180.0, 180.0);
+      double rate = m_telemetrySubsystem.getYawRateDegPerSec(); // CCW positive
 
       double out = 0.0;
       if (Math.abs(error) > ALIGN_TOL_DEG) {
-        out = ALIGN_KP * error + Math.copySign(ALIGN_MIN_OUT, error);
+        out = ALIGN_KP * error + Math.copySign(ALIGN_MIN_OUT, error) - ALIGN_KD * rate;
       }
       rot = MathUtil.clamp(ALIGN_SIGN * out, -1.0, 1.0);
 

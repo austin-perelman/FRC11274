@@ -4,19 +4,14 @@
 
 package frc.robot.subsystems;
 
-// import com.pathplanner.lib.auto.AutoBuilder;
-// import com.pathplanner.lib.config.PIDConstants;
-// import com.pathplanner.lib.config.RobotConfig;
-// import com.pathplanner.lib.controllers.PPHolonomicDriveController;
-
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -25,141 +20,94 @@ import frc.robot.Constants.TelemetryConstants;
 import frc.robot.libs.LimelightHelpers;
 
 public class TelemetrySubsystem extends SubsystemBase {
-  private LimelightSubsystem m_limelight;
+  // ---------------- Tunables ----------------
+  /** Extra heading added to the "face the hub" angle. Use 180 if the shooter exits the BACK of the robot. */
+  private static final double SHOOTER_HEADING_OFFSET_DEG = 0.0;
+
+  /** Ignore vision while spinning faster than this (deg/s). */
+  private static final double MAX_YAW_RATE_DEG_PER_SEC = 360.0;
+  /** A single-tag MegaTag2 update farther than this is ignored (m). */
+  private static final double SINGLE_TAG_MAX_DIST_M = 4.0;
+  /** Field bounds used to throw out obviously bad vision poses (m). */
+  private static final double FIELD_LENGTH_M = 16.541;
+  private static final double FIELD_WIDTH_M = 8.069;
+  private static final double FIELD_MARGIN_M = 0.5;
+
+  // Seeding (gyro + pose heading from MegaTag1) – only used while the robot is stationary and disabled
+  private static final int SEED_FRAMES_REQUIRED = 5;
+  private static final double SEED_MAX_TAG_DIST_M = 3.5;
+  private static final double SEED_MAX_YAW_RATE_DEG_PER_SEC = 10.0;
+  private static final double SEED_MIN_PERIOD_S = 0.5;
+  // ------------------------------------------
+
+  private final LimelightSubsystem m_limelight;
   private final SwerveDrivePoseEstimator m_poseEstimator;
-  private Pigeon m_pigeon;
-  private SwerveDriveSubsystem m_swerveDriveSubsystem;
-  private InterpolatingDoubleTreeMap interpolatingDoubleTreeMap = new InterpolatingDoubleTreeMap();
+  private final Pigeon m_pigeon;
+  private final SwerveDriveSubsystem m_swerveDriveSubsystem;
+  private final InterpolatingDoubleTreeMap interpolatingDoubleTreeMap = new InterpolatingDoubleTreeMap();
 
   final Field2d field = new Field2d();
-private final PIDController pidController = new PIDController(0.07, 0, 0);
+
+  // Vision bookkeeping
+  private double lastVisionTimestamp = -1;
+  private boolean visionApplied = false;
+
+  // Seeding bookkeeping
+  private int seedCount = 0;
+  private double seedSin = 0, seedCos = 0, seedX = 0, seedY = 0;
+  private double lastSeedFrameTs = -1;
+  private double lastSeedTime = -100;
+  private boolean poseSeeded = false;
+
+
+  public double getYawRateDegPerSec() {
+  return m_pigeon.getRate();
+}
+
   public TelemetrySubsystem(SwerveDriveSubsystem swerveDriveSubsystem, Pigeon pigeon, LimelightSubsystem limelight) {
     m_swerveDriveSubsystem = swerveDriveSubsystem;
     m_pigeon = pigeon;
     m_limelight = limelight;
     m_poseEstimator = new SwerveDrivePoseEstimator(
-      SwerveDriveConstants.KINEMATICS,
-      Rotation2d.fromDegrees(m_pigeon.getYaw()),
-      m_swerveDriveSubsystem.getModulePositions(),
-      new Pose2d(0.0,0.0, Rotation2d.fromDegrees(0.0))
-    );
-    var alliance = DriverStation.getAlliance();
-    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
-      // Mirror the starting pose to the red side
-      // Field is 16.54m long, so red origin X ≈ 16.54 - 0.0
-      resetPose(new Pose2d(
-          16.54,  // red side X (field width in meters)
-          8.02,   // mid-field Y, adjust to your actual starting position
-          Rotation2d.fromDegrees(180.0) // facing blue hub from red side
-      ));
-    }
+        SwerveDriveConstants.KINEMATICS,
+        Rotation2d.fromDegrees(m_pigeon.getYaw()),
+        m_swerveDriveSubsystem.getModulePositions(),
+        new Pose2d(0.0, 0.0, Rotation2d.fromDegrees(0.0)));
 
-    for(double[] pair : TelemetryConstants.dataPoints){
+    for (double[] pair : TelemetryConstants.dataPoints) {
       interpolatingDoubleTreeMap.put(pair[0], pair[1]);
     }
 
     SmartDashboard.putData(field);
-
   }
 
-  public Pose2d getPose(){
-    Pose2d pose = new Pose2d(
-      m_poseEstimator.getEstimatedPosition().getX(),
-      m_poseEstimator.getEstimatedPosition().getY(),
-      m_poseEstimator.getEstimatedPosition().getRotation()
-    );
-    return pose;
+  // ---------------- Pose access ----------------
+
+  public Pose2d getPose() {
+    return m_poseEstimator.getEstimatedPosition();
   }
 
-  public double getPigeonYaw(){
+  public double getPigeonYaw() {
     return m_pigeon.getYaw();
   }
 
-  public boolean getLimelightTV(){
+  public boolean getLimelightTV() {
     return m_limelight.getTV();
-  } 
+  }
 
-  public double[] getBotPose_TargetSpace(){
+  public double[] getBotPose_TargetSpace() {
     return LimelightHelpers.getBotPose_TargetSpace(m_limelight.getLimelightName());
   }
 
-  public void resetPose(Pose2d newPose){
+  /** Resets the estimated pose. The gyro itself is NOT changed (the estimator keeps an internal offset). */
+  public void resetPose(Pose2d newPose) {
     m_poseEstimator.resetPosition(
-      Rotation2d.fromDegrees(m_pigeon.getYaw()),
-      m_swerveDriveSubsystem.getModulePositions(),
-      newPose
-    );
+        Rotation2d.fromDegrees(m_pigeon.getYaw()),
+        m_swerveDriveSubsystem.getModulePositions(),
+        newPose);
   }
 
-  public double getRPSForPosition(){
-    Translation2d currentPosition = getPose().getTranslation();
-    double distance;
-    if(getAlliance() == DriverStation.Alliance.Blue){
-      distance = currentPosition.getDistance(TelemetryConstants.BLUE_HUB);
-    }
-    else{
-      distance = currentPosition.getDistance(TelemetryConstants.RED_HUB);
-    }
-    return interpolatingDoubleTreeMap.get(distance);
-  }
-
-  public Rotation2d targetRotationToHub(){
-    Pose2d robotPos = getPose();
-    double deltaX, deltaY;
-    if(getAlliance() == DriverStation.Alliance.Blue){
-      deltaX = TelemetryConstants.BLUE_HUB.getX() - robotPos.getX();
-      deltaY = TelemetryConstants.BLUE_HUB.getY() - robotPos.getY();
-    }
-    else{
-      deltaX = TelemetryConstants.RED_HUB.getX() - robotPos.getX();
-      deltaY = TelemetryConstants.RED_HUB.getY() - robotPos.getY();
-    }
-    
-
-    double angleRadians = Math.atan2(deltaY, deltaX);
-    Rotation2d rot = Rotation2d.fromRadians(angleRadians);
-
-    var alliance = DriverStation.getAlliance();
-    if(alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red && angleRadians < 0) {
-      rot = Rotation2d.fromRadians(angleRadians);
-    }
-    else if(alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red && angleRadians > 0){
-      rot = Rotation2d.fromRadians(angleRadians);
-    }
-
-    return rot;
-  }
-
-  public double getDistance(){
-    Pose2d robotPos = getPose();
-    double deltaX, deltaY;
-    if(getAlliance() == DriverStation.Alliance.Blue){
-      deltaX = TelemetryConstants.BLUE_HUB.getX() - robotPos.getX();
-      deltaY = TelemetryConstants.BLUE_HUB.getY() - robotPos.getY();
-    }
-    else{   
-      deltaX = TelemetryConstants.RED_HUB.getX() - robotPos.getX();
-      deltaY = TelemetryConstants.RED_HUB.getY() - robotPos.getY();
-    }
-
-    return Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
-  }
-
-  //TREE MAP SHOOTER TELEMETRY
-    public double getHeadingErrorDegrees() {
-    double error = targetRotationToHub().getDegrees() - getPose().getRotation().getDegrees();
-    return Math.IEEEremainder(error, 360.0);
-  }
-
-  public boolean isAimed() {
-    return Math.abs(getHeadingErrorDegrees()) < 3.0;
-  }
-
-  public boolean inShootingRange() {
-    double d = getDistance();
-    double[][] pts = TelemetryConstants.dataPoints;
-    return d >= pts[0][0] && d <= pts[pts.length - 1][0];
-  }
+  // ---------------- Hub targeting ----------------
 
   public DriverStation.Alliance getAlliance() {
     var alliance = DriverStation.getAlliance();
@@ -169,56 +117,174 @@ private final PIDController pidController = new PIDController(0.07, 0, 0);
     return DriverStation.Alliance.Blue;
   }
 
+  private Translation2d getHub() {
+    return getAlliance() == DriverStation.Alliance.Blue
+        ? TelemetryConstants.BLUE_HUB
+        : TelemetryConstants.RED_HUB;
+  }
+
+  public double getDistance() {
+    return getPose().getTranslation().getDistance(getHub());
+  }
+
+  public double getRPSForPosition() {
+    return interpolatingDoubleTreeMap.get(getDistance());
+  }
+
+  /** Field-frame heading the robot should have to point at the hub (CCW positive, 0 = +X field). */
+  public Rotation2d targetRotationToHub() {
+    Translation2d robot = getPose().getTranslation();
+    Translation2d hub = getHub();
+    Rotation2d toHub = new Rotation2d(hub.getX() - robot.getX(), hub.getY() - robot.getY());
+    return toHub.plus(Rotation2d.fromDegrees(SHOOTER_HEADING_OFFSET_DEG));
+  }
+
+  // ---------------- Vision seeding ----------------
+
+  private boolean isOnField(Pose2d pose) {
+    return pose.getX() > -FIELD_MARGIN_M
+        && pose.getX() < FIELD_LENGTH_M + FIELD_MARGIN_M
+        && pose.getY() > -FIELD_MARGIN_M
+        && pose.getY() < FIELD_WIDTH_M + FIELD_MARGIN_M;
+  }
+
+  private void clearSeedAccumulator() {
+    seedCount = 0;
+    seedSin = 0;
+    seedCos = 0;
+    seedX = 0;
+    seedY = 0;
+  }
+
+  public boolean isPoseSeeded() {
+    return poseSeeded;
+  }
+
+  /**
+   * Call repeatedly while DISABLED and stationary. Uses MegaTag1 (heading comes from the tags, not the gyro)
+   * with 2+ tags, averages a few frames, then sets BOTH the gyro and the pose estimate so MegaTag2 receives
+   * the correct heading afterwards.
+   *
+   * @return true on the loop where a seed was applied
+   */
+  public boolean seedPoseFromVision() {
+    var mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(m_limelight.getLimelightName());
+
+    boolean good = mt1 != null
+        && mt1.tagCount >= 2
+        && mt1.avgTagDist <= SEED_MAX_TAG_DIST_M
+        && Math.abs(m_pigeon.getRate()) < SEED_MAX_YAW_RATE_DEG_PER_SEC
+        && isOnField(mt1.pose);
+
+    if (!good) {
+      clearSeedAccumulator();
+      return false;
+    }
+
+    if (mt1.timestampSeconds == lastSeedFrameTs) {
+      return false; // same camera frame as last loop
+    }
+    lastSeedFrameTs = mt1.timestampSeconds;
+
+    double headingRad = mt1.pose.getRotation().getRadians();
+    seedSin += Math.sin(headingRad);
+    seedCos += Math.cos(headingRad);
+    seedX += mt1.pose.getX();
+    seedY += mt1.pose.getY();
+    seedCount++;
+
+    if (seedCount < SEED_FRAMES_REQUIRED) {
+      return false;
+    }
+
+    double now = Timer.getFPGATimestamp();
+    if (now - lastSeedTime < SEED_MIN_PERIOD_S) {
+      clearSeedAccumulator();
+      return false;
+    }
+
+    double headingDeg = Math.toDegrees(Math.atan2(seedSin, seedCos));
+    Translation2d position = new Translation2d(seedX / seedCount, seedY / seedCount);
+    Rotation2d heading = Rotation2d.fromDegrees(headingDeg);
+
+    // Make the gyro read the field heading, and give the estimator that same gyro angle so its offset is 0.
+    m_pigeon.setYaw(headingDeg);
+    m_poseEstimator.resetPosition(
+        heading,
+        m_swerveDriveSubsystem.getModulePositions(),
+        new Pose2d(position, heading));
+
+    clearSeedAccumulator();
+    lastSeedTime = now;
+    poseSeeded = true;
+    return true;
+  }
+
+  // ---------------- Periodic ----------------
+
   @Override
   public void periodic() {
+    m_poseEstimator.update(
+        Rotation2d.fromDegrees(m_pigeon.getYaw()),
+        m_swerveDriveSubsystem.getModulePositions());
+
+    String ll = m_limelight.getLimelightName();
+LimelightHelpers.PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(ll);
+
+visionApplied = false;
+boolean reject = Math.abs(m_pigeon.getRate()) > MAX_YAW_RATE_DEG_PER_SEC;
+boolean multiTag = false;
+
+if (mt1 == null || mt1.tagCount == 0) {
+  reject = true;
+} else {
+  multiTag = mt1.tagCount >= 2;
+  double ambiguity = (mt1.rawFiducials != null && mt1.rawFiducials.length > 0)
+      ? mt1.rawFiducials[0].ambiguity : 1.0;
+
+  // A single tag can give a mirrored (wrong) pose, so only accept it when it's close and unambiguous
+  if (!multiTag && (ambiguity > 0.2 || mt1.avgTagDist > 3.0)) reject = true;
+  if (mt1.avgTagDist > 5.0) reject = true;
+  if (!isOnField(mt1.pose)) reject = true;
+  if (mt1.timestampSeconds == lastVisionTimestamp) reject = true;
+}
+
+if (!reject) {
+  double xyStdDev = multiTag ? 0.5 : 1.0;
+  // Position only. Heading stays gyro-based (it was set by seedPoseFromVision).
+  m_poseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
+  m_poseEstimator.addVisionMeasurement(mt1.pose, mt1.timestampSeconds);
+  lastVisionTimestamp = mt1.timestampSeconds;
+  visionApplied = true;
+}
+
     field.setRobotPose(getPose());
 
-    
-    m_poseEstimator.update(
-      Rotation2d.fromDegrees(m_pigeon.getYaw()),
-      m_swerveDriveSubsystem.getModulePositions()
-    );
-    boolean doRejectUpdate = false;
-    LimelightHelpers.SetRobotOrientation(m_limelight.getLimelightName(), 
-      m_poseEstimator.getEstimatedPosition().getRotation().getDegrees(), 
-      0, 0, 0, 0, 0);
-    LimelightHelpers.PoseEstimate mt2 = 
-      LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(m_limelight.getLimelightName());
-
-    if (Math.abs(m_pigeon.getRate()) > 360) {
-      doRejectUpdate = true;
-    }
-    if (mt2 != null && mt2.tagCount == 0) {
-      doRejectUpdate = true;
-    }
-
-    if (!doRejectUpdate && mt2 != null) {
-      // Trust vision for X/Y (0.7m error), ignore vision for rotation (999999 error)
-      m_poseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(0.7, 0.7, 9999999));
-      m_poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
-    }
-
-    Pose2d poseEstimate = getPose();
-    SmartDashboard.putNumber("Estimated X", poseEstimate.getX());
-    SmartDashboard.putNumber("Estimated Y", poseEstimate.getY());
-    SmartDashboard.putNumber("Estimated Rotation", poseEstimate.getRotation().getDegrees());
-
-    SmartDashboard.putNumber("Estimated X in", poseEstimate.getX()*39.37);
-    SmartDashboard.putNumber("Estimated Y in", poseEstimate.getY()*39.37);
-
-    SmartDashboard.putBoolean("Aimed", isAimed());
-    SmartDashboard.putBoolean("In Range", inShootingRange());
-    SmartDashboard.putNumber("Tree Map RPS", getRPSForPosition());
+    // ---- Dashboard ----
+    Pose2d pose = getPose();
+    SmartDashboard.putNumber("Estimated X", pose.getX());
+    SmartDashboard.putNumber("Estimated Y", pose.getY());
+    SmartDashboard.putNumber("Estimated Rotation", pose.getRotation().getDegrees());
+    SmartDashboard.putNumber("Estimated X in", pose.getX() * 39.37);
+    SmartDashboard.putNumber("Estimated Y in", pose.getY() * 39.37);
 
     SmartDashboard.putNumber("rot to hub", targetRotationToHub().getDegrees());
     SmartDashboard.putNumber("distance to hub", getDistance());
     SmartDashboard.putNumber("Pigean rot", m_pigeon.getYaw());
-    double currentDeg = getPose().getRotation().getDegrees();
-      double targetDeg = targetRotationToHub().getDegrees();
-      
-      double error = targetDeg - currentDeg;
-      error = Math.IEEEremainder(error, 360.0);
-      
-    SmartDashboard.putNumber("Testing rot", -pidController.calculate(0, error));
+    // Constant non-zero value here means the pose heading and the raw gyro are offset from each other
+    SmartDashboard.putNumber("Pose minus Pigeon deg",
+        Math.IEEEremainder(pose.getRotation().getDegrees() - m_pigeon.getYaw(), 360.0));
+
+    
+    SmartDashboard.putBoolean("Vision applied", visionApplied);
+
+    
+    if (mt1 != null && mt1.tagCount > 0) {
+      SmartDashboard.putNumber("LL MT1 tags", mt1.tagCount);
+      SmartDashboard.putNumber("LL MT1 X", mt1.pose.getX());
+      SmartDashboard.putNumber("LL MT1 Y", mt1.pose.getY());
+      SmartDashboard.putNumber("LL MT1 Rot", mt1.pose.getRotation().getDegrees());
+    }
+    SmartDashboard.putBoolean("Pose seeded", poseSeeded);
   }
 }

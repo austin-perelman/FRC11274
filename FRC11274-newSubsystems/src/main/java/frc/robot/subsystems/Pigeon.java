@@ -4,8 +4,8 @@
 
 package frc.robot.subsystems;
 
-import com.ctre.phoenix6.hardware.Pigeon2;
 import com.ctre.phoenix6.configs.Pigeon2Configuration;
+import com.ctre.phoenix6.hardware.Pigeon2;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -13,7 +13,7 @@ import frc.robot.Constants.PigeonConstants;
 
 public class Pigeon extends SubsystemBase {
   Pigeon2 pigeon = new Pigeon2(PigeonConstants.PIGEON_ID);
-  
+
   public Pigeon() {
     Pigeon2Configuration configs = new Pigeon2Configuration();
     configs.MountPose.MountPoseYaw = 0;
@@ -27,19 +27,27 @@ public class Pigeon extends SubsystemBase {
     configs.Pigeon2Features.DisableNoMotionCalibration = false;
     configs.Pigeon2Features.DisableTemperatureCompensation = false;
     configs.Pigeon2Features.EnableCompass = false;
-    
+
     // Write these configs to the Pigeon2
     pigeon.getConfigurator().apply(configs);
 
     pigeon.setYaw(0);
   }
 
-  public double getYaw(){
+  /** Continuous yaw in degrees, counter-clockwise positive (does not wrap at 360). */
+  public double getYaw() {
     var yaw = pigeon.getYaw().refresh();
     return yaw.getValueAsDouble();
   }
-  public double getRate(){
+
+  /** Yaw rate in degrees per second. */
+  public double getRate() {
     return pigeon.getAngularVelocityZWorld().getValueAsDouble();
+  }
+
+  /** Sets the gyro so it reads the given yaw (degrees) right now. */
+  public void setYaw(double degrees) {
+    pigeon.setYaw(degrees);
   }
 
   @Override

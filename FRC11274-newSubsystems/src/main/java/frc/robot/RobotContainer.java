@@ -181,6 +181,10 @@ public class RobotContainer {
     
   }
 
+  public void seedPoseFromVision() {
+  m_telemetrySubsystem.seedPoseFromVision();
+}
+
   public Command getAutonomousCommand() {
     return m_autosContainer.getSelectedAuto();
   }
