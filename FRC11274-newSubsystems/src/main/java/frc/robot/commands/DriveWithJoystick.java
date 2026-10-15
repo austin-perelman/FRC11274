@@ -27,13 +27,13 @@ import java.util.function.BooleanSupplier;
 public class DriveWithJoystick extends Command {
   // --- Hub align tuning ---
   /** Flip to +1.0 if the robot turns AWAY from the hub while aligning. */
-  private static final double ALIGN_SIGN = -1.0;
+  private static final double ALIGN_SIGN = 1.0;
   /** Output (normalized, 1.0 = MAX_ROTATE_SPEED) per degree of error. */
   private static final double ALIGN_KP = 0.06;
   /** Minimum output while outside tolerance, enough to overcome friction. Tune this. */
-  private static final double ALIGN_MIN_OUT = 0.10;
+  private static final double ALIGN_MIN_OUT = 0.5;
   /** Stop turning once within this many degrees of the target. */
-  private static final double ALIGN_TOL_DEG = 1.5;
+  private static final double ALIGN_TOL_DEG = 3;
 
   private final SwerveDriveSubsystem m_swerveDrive;
   private final CommandXboxController m_controller;

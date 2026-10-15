@@ -1,5 +1,10 @@
 {
   "NetworkTables": {
+    "transitory": {
+      "SmartDashboard": {
+        "open": true
+      }
+    },
     "types": {
       "/FMSInfo": "FMSInfo",
       "/SmartDashboard/Auto Chooser": "String Chooser",
@@ -20,9 +25,6 @@
     }
   },
   "NetworkTables Info": {
-    "visible": true
-  },
-  "NetworkTables Log": {
     "visible": true
   },
   "NetworkTables Settings": {
