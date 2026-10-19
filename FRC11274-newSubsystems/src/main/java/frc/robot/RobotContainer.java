@@ -97,11 +97,14 @@ public class RobotContainer {
     //MANUAL FUNNEL
     //m_driverController.y().whileTrue(m_shooterSubsystem.runFunnelManual());
     
-    //TREE MAP SHOOTING
-    m_driverController.y().whileTrue(
-    m_shooterSubsystem.shootSequenceTreeMap(
-        ShooterConstants.FEEDER_SPEED,
-        m_telemetrySubsystem::getRPSForPosition));
+    // TREE MAP SHOOTING: lock distance/RPS from current pose when Y is pressed
+    m_driverController.y().whileTrue(Commands.deferredProxy(() -> {
+      double distanceM = m_telemetrySubsystem.getDistance();
+      double rps = m_telemetrySubsystem.getRPSForPosition();
+      SmartDashboard.putNumber("Tree Map distance m", distanceM);
+      SmartDashboard.putNumber("Tree Map RPS", rps);
+      return m_shooterSubsystem.shootSequence(ShooterConstants.FEEDER_SPEED, rps);
+    }));
 
 
     //TEMP TUNING FOR TREE MAP

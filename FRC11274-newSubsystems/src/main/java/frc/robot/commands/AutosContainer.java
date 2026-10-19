@@ -259,10 +259,7 @@ public final class AutosContainer {
     return Commands.sequence(
       Commands.runOnce(() -> m_telemetrySubsystem.resetPose(startPose)),
 
-      new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem)
-          .deadlineWith(
-              Commands.run(() -> m_swerveDriveSubsystem.drive(new ChassisSpeeds(0.0, speed, 0), true))
-          )
+      new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, 0.0, speed)
           .withTimeout(driveTime),
 
       Commands.runOnce(() -> m_swerveDriveSubsystem.drive(new ChassisSpeeds(0, 0, 0), true), m_swerveDriveSubsystem),

@@ -74,7 +74,7 @@ public final class Constants {
 
       public static final double GEAR_RATIO = 0.2;
 
-      public static final double SUPPLY_CURRENT_LIMIT = 40;
+      public static final double SUPPLY_CURRENT_LIMIT = 35;
       public static final double STATOR_CURRENT_LIMIT = 40;
     }
   }

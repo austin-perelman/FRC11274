@@ -26,8 +26,8 @@ public class TelemetrySubsystem extends SubsystemBase {
 
   /** Ignore vision while spinning faster than this (deg/s). */
   private static final double MAX_YAW_RATE_DEG_PER_SEC = 360.0;
-  /** A single-tag MegaTag2 update farther than this is ignored (m). */
-  private static final double SINGLE_TAG_MAX_DIST_M = 4.0;
+  /** A MegaTag2 update farther than this is ignored (m). */
+  private static final double MAX_TAG_DIST_M = 4.5;
   /** Field bounds used to throw out obviously bad vision poses (m). */
   private static final double FIELD_LENGTH_M = 16.541;
   private static final double FIELD_WIDTH_M = 8.069;
@@ -36,6 +36,8 @@ public class TelemetrySubsystem extends SubsystemBase {
   // Seeding (gyro + pose heading from MegaTag1) – only used while the robot is stationary and disabled
   private static final int SEED_FRAMES_REQUIRED = 5;
   private static final double SEED_MAX_TAG_DIST_M = 3.5;
+  private static final double SEED_SINGLE_TAG_MAX_DIST_M = 2.5;
+  private static final double SEED_SINGLE_TAG_MAX_AMBIGUITY = 0.2;
   private static final double SEED_MAX_YAW_RATE_DEG_PER_SEC = 10.0;
   private static final double SEED_MIN_PERIOD_S = 0.5;
   // ------------------------------------------
@@ -59,11 +61,6 @@ public class TelemetrySubsystem extends SubsystemBase {
   private double lastSeedTime = -100;
   private boolean poseSeeded = false;
 
-
-  public double getYawRateDegPerSec() {
-  return m_pigeon.getRate();
-}
-
   public TelemetrySubsystem(SwerveDriveSubsystem swerveDriveSubsystem, Pigeon pigeon, LimelightSubsystem limelight) {
     m_swerveDriveSubsystem = swerveDriveSubsystem;
     m_pigeon = pigeon;
@@ -79,6 +76,10 @@ public class TelemetrySubsystem extends SubsystemBase {
     }
 
     SmartDashboard.putData(field);
+  }
+
+  public double getYawRateDegPerSec() {
+    return m_pigeon.getRate();
   }
 
   // ---------------- Pose access ----------------
@@ -99,10 +100,11 @@ public class TelemetrySubsystem extends SubsystemBase {
     return LimelightHelpers.getBotPose_TargetSpace(m_limelight.getLimelightName());
   }
 
-  /** Resets the estimated pose. The gyro itself is NOT changed (the estimator keeps an internal offset). */
+  /** Resets the estimated pose and sets the gyro to that pose heading so field-relative drive matches align. */
   public void resetPose(Pose2d newPose) {
+    m_pigeon.setYaw(newPose.getRotation().getDegrees());
     m_poseEstimator.resetPosition(
-        Rotation2d.fromDegrees(m_pigeon.getYaw()),
+        newPose.getRotation(),
         m_swerveDriveSubsystem.getModulePositions(),
         newPose);
   }
@@ -161,18 +163,30 @@ public class TelemetrySubsystem extends SubsystemBase {
   }
 
   /**
-   * Call repeatedly while DISABLED and stationary. Uses MegaTag1 (heading comes from the tags, not the gyro)
-   * with 2+ tags, averages a few frames, then sets BOTH the gyro and the pose estimate so MegaTag2 receives
-   * the correct heading afterwards.
-   *
-   * @return true on the loop where a seed was applied
+   * Call repeatedly while DISABLED and stationary. Uses MegaTag1 to seed
+   * both the gyro and pose estimate using either 2+ tags or 1 high-confidence tag.
    */
   public boolean seedPoseFromVision() {
     var mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(m_limelight.getLimelightName());
 
-    boolean good = mt1 != null
-        && mt1.tagCount >= 2
-        && mt1.avgTagDist <= SEED_MAX_TAG_DIST_M
+    if (mt1 == null || mt1.tagCount == 0) {
+      clearSeedAccumulator();
+      return false;
+    }
+
+    boolean multiTag = mt1.tagCount >= 2;
+    double ambiguity = (mt1.rawFiducials != null && mt1.rawFiducials.length > 0)
+        ? mt1.rawFiducials[0].ambiguity : 1.0;
+
+    boolean singleTagValid = mt1.tagCount == 1
+        && mt1.avgTagDist <= SEED_SINGLE_TAG_MAX_DIST_M
+        && ambiguity <= SEED_SINGLE_TAG_MAX_AMBIGUITY;
+
+    boolean distanceGood = multiTag 
+        ? mt1.avgTagDist <= SEED_MAX_TAG_DIST_M 
+        : singleTagValid;
+
+    boolean good = distanceGood
         && Math.abs(m_pigeon.getRate()) < SEED_MAX_YAW_RATE_DEG_PER_SEC
         && isOnField(mt1.pose);
 
@@ -182,7 +196,7 @@ public class TelemetrySubsystem extends SubsystemBase {
     }
 
     if (mt1.timestampSeconds == lastSeedFrameTs) {
-      return false; // same camera frame as last loop
+      return false; 
     }
     lastSeedFrameTs = mt1.timestampSeconds;
 
@@ -207,7 +221,6 @@ public class TelemetrySubsystem extends SubsystemBase {
     Translation2d position = new Translation2d(seedX / seedCount, seedY / seedCount);
     Rotation2d heading = Rotation2d.fromDegrees(headingDeg);
 
-    // Make the gyro read the field heading, and give the estimator that same gyro angle so its offset is 0.
     m_pigeon.setYaw(headingDeg);
     m_poseEstimator.resetPosition(
         heading,
@@ -229,38 +242,42 @@ public class TelemetrySubsystem extends SubsystemBase {
         m_swerveDriveSubsystem.getModulePositions());
 
     String ll = m_limelight.getLimelightName();
-LimelightHelpers.PoseEstimate mt1 = LimelightHelpers.getBotPoseEstimate_wpiBlue(ll);
 
-visionApplied = false;
-boolean reject = Math.abs(m_pigeon.getRate()) > MAX_YAW_RATE_DEG_PER_SEC;
-boolean multiTag = false;
+    LimelightHelpers.SetRobotOrientation(
+        ll,
+        m_pigeon.getYaw(),
+        m_pigeon.getRate(),
+        0.0, 0.0, 0.0, 0.0
+    );
 
-if (mt1 == null || mt1.tagCount == 0) {
-  reject = true;
-} else {
-  multiTag = mt1.tagCount >= 2;
-  double ambiguity = (mt1.rawFiducials != null && mt1.rawFiducials.length > 0)
-      ? mt1.rawFiducials[0].ambiguity : 1.0;
+    LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(ll);
 
-  // A single tag can give a mirrored (wrong) pose, so only accept it when it's close and unambiguous
-  if (!multiTag && (ambiguity > 0.2 || mt1.avgTagDist > 3.0)) reject = true;
-  if (mt1.avgTagDist > 5.0) reject = true;
-  if (!isOnField(mt1.pose)) reject = true;
-  if (mt1.timestampSeconds == lastVisionTimestamp) reject = true;
-}
+    visionApplied = false;
+    boolean reject = Math.abs(m_pigeon.getRate()) > MAX_YAW_RATE_DEG_PER_SEC;
 
-if (!reject) {
-  double xyStdDev = multiTag ? 0.5 : 1.0;
-  // Position only. Heading stays gyro-based (it was set by seedPoseFromVision).
-  m_poseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
-  m_poseEstimator.addVisionMeasurement(mt1.pose, mt1.timestampSeconds);
-  lastVisionTimestamp = mt1.timestampSeconds;
-  visionApplied = true;
-}
+    if (mt2 == null || mt2.tagCount == 0) {
+      reject = true;
+    } else {
+      if (mt2.avgTagDist > MAX_TAG_DIST_M) reject = true;
+      if (!isOnField(mt2.pose)) reject = true;
+      if (mt2.timestampSeconds == lastVisionTimestamp) reject = true;
+    }
+
+    if (!reject) {
+      double baseStdDev = mt2.tagCount >= 2 ? 0.3 : 0.7;
+      double distanceMultiplier = 1.0 + (mt2.avgTagDist * 0.5);
+      double xyStdDev = baseStdDev * distanceMultiplier;
+
+      m_poseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
+      m_poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
+      
+      lastVisionTimestamp = mt2.timestampSeconds;
+      visionApplied = true;
+    }
 
     field.setRobotPose(getPose());
 
-    // ---- Dashboard ----
+    // ---- Dashboard / Telemetry ----
     Pose2d pose = getPose();
     SmartDashboard.putNumber("Estimated X", pose.getX());
     SmartDashboard.putNumber("Estimated Y", pose.getY());
@@ -270,20 +287,19 @@ if (!reject) {
 
     SmartDashboard.putNumber("rot to hub", targetRotationToHub().getDegrees());
     SmartDashboard.putNumber("distance to hub", getDistance());
-    SmartDashboard.putNumber("Pigean rot", m_pigeon.getYaw());
-    // Constant non-zero value here means the pose heading and the raw gyro are offset from each other
+    SmartDashboard.putNumber("Tree Map live RPS", getRPSForPosition());
+    SmartDashboard.putNumber("Pigeon rot", m_pigeon.getYaw());
     SmartDashboard.putNumber("Pose minus Pigeon deg",
         Math.IEEEremainder(pose.getRotation().getDegrees() - m_pigeon.getYaw(), 360.0));
 
-    
     SmartDashboard.putBoolean("Vision applied", visionApplied);
 
-    
-    if (mt1 != null && mt1.tagCount > 0) {
-      SmartDashboard.putNumber("LL MT1 tags", mt1.tagCount);
-      SmartDashboard.putNumber("LL MT1 X", mt1.pose.getX());
-      SmartDashboard.putNumber("LL MT1 Y", mt1.pose.getY());
-      SmartDashboard.putNumber("LL MT1 Rot", mt1.pose.getRotation().getDegrees());
+    if (mt2 != null && mt2.tagCount > 0) {
+      SmartDashboard.putNumber("LL MT2 tags", mt2.tagCount);
+      SmartDashboard.putNumber("LL MT2 X", mt2.pose.getX());
+      SmartDashboard.putNumber("LL MT2 Y", mt2.pose.getY());
+      SmartDashboard.putNumber("LL MT2 Rot", mt2.pose.getRotation().getDegrees());
+      SmartDashboard.putNumber("LL MT2 Avg Dist", mt2.avgTagDist);
     }
     SmartDashboard.putBoolean("Pose seeded", poseSeeded);
   }
