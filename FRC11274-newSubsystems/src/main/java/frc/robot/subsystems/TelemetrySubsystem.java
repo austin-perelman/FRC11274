@@ -243,37 +243,41 @@ public class TelemetrySubsystem extends SubsystemBase {
 
     String ll = m_limelight.getLimelightName();
 
-    LimelightHelpers.SetRobotOrientation(
-        ll,
-        m_pigeon.getYaw(),
-        m_pigeon.getRate(),
-        0.0, 0.0, 0.0, 0.0
-    );
+// Best practice: Use fused pose estimator rotation (or a continuous un-wrapped gyro yaw)
+double robotHeading = m_poseEstimator.getEstimatedPosition().getRotation().getDegrees();
 
-    LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(ll);
+LimelightHelpers.SetRobotOrientation(
+    ll,
+    robotHeading,
+    m_pigeon.getRate(),
+    0.0, 0.0, 0.0, 0.0
+);
 
-    visionApplied = false;
-    boolean reject = Math.abs(m_pigeon.getRate()) > MAX_YAW_RATE_DEG_PER_SEC;
+LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(ll);
 
-    if (mt2 == null || mt2.tagCount == 0) {
-      reject = true;
-    } else {
-      if (mt2.avgTagDist > MAX_TAG_DIST_M) reject = true;
-      if (!isOnField(mt2.pose)) reject = true;
-      if (mt2.timestampSeconds == lastVisionTimestamp) reject = true;
-    }
+visionApplied = false;
+boolean reject = Math.abs(m_pigeon.getRate()) > MAX_YAW_RATE_DEG_PER_SEC;
 
-    if (!reject) {
-      double baseStdDev = mt2.tagCount >= 2 ? 0.3 : 0.7;
-      double distanceMultiplier = 1.0 + (mt2.avgTagDist * 0.5);
-      double xyStdDev = baseStdDev * distanceMultiplier;
+if (mt2 == null || mt2.tagCount == 0) {
+  reject = true;
+} else {
+  if (mt2.avgTagDist > MAX_TAG_DIST_M) reject = true;
+  if (!isOnField(mt2.pose)) reject = true;
+  // Fixed: Use safe floating-point comparison instead of '=='
+  if (Math.abs(mt2.timestampSeconds - lastVisionTimestamp) < 1e-5) reject = true;
+}
 
-      m_poseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
-      m_poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
-      
-      lastVisionTimestamp = mt2.timestampSeconds;
-      visionApplied = true;
-    }
+if (!reject) {
+  double baseStdDev = mt2.tagCount >= 2 ? 0.3 : 0.7;
+  double distanceMultiplier = 1.0 + (mt2.avgTagDist * 0.5);
+  double xyStdDev = baseStdDev * distanceMultiplier;
+
+  m_poseEstimator.setVisionMeasurementStdDevs(VecBuilder.fill(xyStdDev, xyStdDev, 9999999));
+  m_poseEstimator.addVisionMeasurement(mt2.pose, mt2.timestampSeconds);
+  
+  lastVisionTimestamp = mt2.timestampSeconds;
+  visionApplied = true;
+}
 
     field.setRobotPose(getPose());
 
@@ -281,11 +285,21 @@ public class TelemetrySubsystem extends SubsystemBase {
     Pose2d pose = getPose();
     SmartDashboard.putNumber("Estimated X", pose.getX());
     SmartDashboard.putNumber("Estimated Y", pose.getY());
+
+    Translation2d robot = getPose().getTranslation();
+    Translation2d hub = getHub();
+
+    SmartDashboard.putNumber("Hub/RobotX", robot.getX());
+    SmartDashboard.putNumber("Hub/RobotY", robot.getY());
+    SmartDashboard.putNumber("Hub/HubX", hub.getX());
+    SmartDashboard.putNumber("Hub/HubY", hub.getY());
+    SmartDashboard.putNumber("rot to hub", targetRotationToHub().getDegrees());
+
     SmartDashboard.putNumber("Estimated Rotation", pose.getRotation().getDegrees());
     SmartDashboard.putNumber("Estimated X in", pose.getX() * 39.37);
     SmartDashboard.putNumber("Estimated Y in", pose.getY() * 39.37);
 
-    SmartDashboard.putNumber("rot to hub", targetRotationToHub().getDegrees());
+    
     SmartDashboard.putNumber("distance to hub", getDistance());
     SmartDashboard.putNumber("Tree Map live RPS", getRPSForPosition());
     SmartDashboard.putNumber("Pigeon rot", m_pigeon.getYaw());
