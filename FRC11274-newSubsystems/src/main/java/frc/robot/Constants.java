@@ -39,7 +39,7 @@ public final class Constants {
 
     public static final int TICKS_PER_REVOLUTION = 4096;
 
-    public static final double MAX_DRIVE_SPEED = 0.7; // m/s MAX DRIVE SPEED
+    public static final double MAX_DRIVE_SPEED = 1.3; // m/s MAX DRIVE SPEED
     public static final double MAX_ROTATE_SPEED = 2; // rad/s MAX ROTATE SPEED
     public static final double WHEEL_RADIUS = 0.051;
 
@@ -74,7 +74,7 @@ public final class Constants {
 
       public static final double GEAR_RATIO = 0.2;
 
-      public static final double SUPPLY_CURRENT_LIMIT = 40;
+      public static final double SUPPLY_CURRENT_LIMIT = 35;
       public static final double STATOR_CURRENT_LIMIT = 40;
     }
   }
@@ -119,12 +119,13 @@ public final class Constants {
   public static final class TelemetryConstants {
     // (distance (m), velocity (rps))
     public static final double[][] dataPoints = { //test data
-      {1.24,31},
-      {1.94,33},
-      {2.28,34.5},
-      {2.8,36},
-      {3.17,39.5},
-      {3.75,42},
+      {1.24,32},
+      {1.94,34},
+      {2.28,36},
+      {2.8,37},
+      {3.17,41},
+      {3.75,44},
+      {4, 47}
     };
 
     public static final Translation2d BLUE_HUB = new Translation2d(4.626, 4.033);

@@ -17,13 +17,17 @@ import frc.robot.subsystems.TelemetrySubsystem;
  */
 public class AlignToHubAuto extends Command {
   /** Flip to +1.0 if the robot turns AWAY from the hub while aligning. */
-  private static final double ALIGN_SIGN = 1.0;
+  private static final double ALIGN_SIGN = -1.0;
   /** Output (normalized, 1.0 = MAX_ROTATE_SPEED) per degree of error. */
   private static final double ALIGN_KP = 0.06;
-  /** Minimum output while outside tolerance, enough to overcome friction. */
+  /** Minimum output while far from the target, enough to overcome friction. */
   private static final double ALIGN_MIN_OUT = 0.30;
+  /** Extra min output only used for the last few degrees so it finishes the turn. */
+  private static final double ALIGN_FINE_MIN = 0.12;
+  /** Use the large min-output only when farther than this. */
+  private static final double ALIGN_COARSE_DEG = 8.0;
   /** Stop turning once within this many degrees of the target. */
-  private static final double ALIGN_TOL_DEG = 1.5;
+  private static final double ALIGN_TOL_DEG = 0.75;
 
   private final SwerveDriveSubsystem m_swerveDrive;
   private final TelemetrySubsystem m_telemetry;
@@ -61,7 +65,9 @@ public class AlignToHubAuto extends Command {
 
     double out = 0.0;
     if (Math.abs(error) > ALIGN_TOL_DEG) {
-      out = ALIGN_KP * error + Math.copySign(ALIGN_MIN_OUT, error);
+      out = ALIGN_KP * error;
+      double minOut = Math.abs(error) > ALIGN_COARSE_DEG ? ALIGN_MIN_OUT : ALIGN_FINE_MIN;
+      out += Math.copySign(minOut, error);
     }
     double rot = MathUtil.clamp(ALIGN_SIGN * out, -1.0, 1.0);
 

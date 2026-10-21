@@ -4,6 +4,9 @@
 
 package frc.robot.subsystems;
 
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+
 import com.ctre.phoenix6.configs.Pigeon2Configuration;
 import com.ctre.phoenix6.hardware.Pigeon2;
 
@@ -36,18 +39,17 @@ public class Pigeon extends SubsystemBase {
 
   /** Continuous yaw in degrees, counter-clockwise positive (does not wrap at 360). */
   public double getYaw() {
-    var yaw = pigeon.getYaw().refresh();
-    return yaw.getValueAsDouble();
+    return pigeon.getYaw().refresh().getValue().in(Degrees);
   }
 
   /** Yaw rate in degrees per second. */
   public double getRate() {
-    return pigeon.getAngularVelocityZWorld().getValueAsDouble();
+    return pigeon.getAngularVelocityZWorld().refresh().getValue().in(DegreesPerSecond);
   }
 
   /** Sets the gyro so it reads the given yaw (degrees) right now. */
   public void setYaw(double degrees) {
-    pigeon.setYaw(degrees);
+    pigeon.setYaw(Degrees.of(degrees));
   }
 
   @Override

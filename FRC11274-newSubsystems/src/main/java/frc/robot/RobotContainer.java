@@ -74,11 +74,11 @@ public class RobotContainer {
   }
 
   private void configureButtonBindings() {
-    //m_driverController.povUp()
-     //    .whileTrue(m_climberSubsystem.setDutyCycle(0.3));
+    // m_driverController.povUp()
+     //  .whileTrue(m_climberSubsystem.setDutyCycle(0.3));
 
-     //m_driverController.povDown()
-       //  .whileTrue(m_climberSubsystem.setDutyCycle(-0.3));
+    // m_driverController.povDown()
+      //  .whileTrue(m_climberSubsystem.setDutyCycle(-0.3));
 
     //CLIMBING
     m_driverController.povLeft()
@@ -97,11 +97,14 @@ public class RobotContainer {
     //MANUAL FUNNEL
     //m_driverController.y().whileTrue(m_shooterSubsystem.runFunnelManual());
     
-    //TREE MAP SHOOTING
-    m_driverController.y().whileTrue(
-    m_shooterSubsystem.shootSequenceTreeMap(
-        ShooterConstants.FEEDER_SPEED,
-        m_telemetrySubsystem::getRPSForPosition));
+    // TREE MAP SHOOTING: lock distance/RPS from current pose when Y is pressed
+    m_driverController.y().whileTrue(Commands.deferredProxy(() -> {
+      double distanceM = m_telemetrySubsystem.getDistance();
+      double rps = m_telemetrySubsystem.getRPSForPosition();
+      SmartDashboard.putNumber("Tree Map distance m", distanceM);
+      SmartDashboard.putNumber("Tree Map RPS", rps);
+      return m_shooterSubsystem.shootSequence(ShooterConstants.FEEDER_SPEED, rps);
+    }));
 
 
     //TEMP TUNING FOR TREE MAP
@@ -141,9 +144,9 @@ public class RobotContainer {
 
     // DEPLOY AND RUN INTAKE
     m_driverController.povUp()
-         .whileTrue(m_intakeSubsystem.setPosition(IntakeConstants.PivotConstants.RETRACT_ROTATIONS));
+        .whileTrue(m_intakeSubsystem.setPosition(IntakeConstants.PivotConstants.RETRACT_ROTATIONS));
     m_driverController.povDown()
-         .whileTrue(m_intakeSubsystem.setPosition(IntakeConstants.PivotConstants.DEPLOY_ROTATIONS));
+       .whileTrue(m_intakeSubsystem.setPosition(IntakeConstants.PivotConstants.DEPLOY_ROTATIONS));
 
      m_driverController.rightTrigger()
       .whileTrue(
