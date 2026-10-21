@@ -24,8 +24,11 @@ public class LimelightSubsystem extends SubsystemBase {
           20,  
           180    
       );
+
+    
     }
     LimelightHelpers.setupPortForwardingUSB(0);
+    LimelightHelpers.SetIMUMode(LIMELIGHT_NAME, 0); // external yaw only
   }
 
   public String getLimelightName(){

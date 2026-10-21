@@ -74,11 +74,11 @@ public class RobotContainer {
   }
 
   private void configureButtonBindings() {
-    //m_driverController.povUp()
-     //    .whileTrue(m_climberSubsystem.setDutyCycle(0.3));
+    // m_driverController.povUp()
+     //  .whileTrue(m_climberSubsystem.setDutyCycle(0.3));
 
-     //m_driverController.povDown()
-       //  .whileTrue(m_climberSubsystem.setDutyCycle(-0.3));
+    // m_driverController.povDown()
+      //  .whileTrue(m_climberSubsystem.setDutyCycle(-0.3));
 
     //CLIMBING
     m_driverController.povLeft()
@@ -144,9 +144,9 @@ public class RobotContainer {
 
     // DEPLOY AND RUN INTAKE
     m_driverController.povUp()
-         .whileTrue(m_intakeSubsystem.setPosition(IntakeConstants.PivotConstants.RETRACT_ROTATIONS));
+        .whileTrue(m_intakeSubsystem.setPosition(IntakeConstants.PivotConstants.RETRACT_ROTATIONS));
     m_driverController.povDown()
-         .whileTrue(m_intakeSubsystem.setPosition(IntakeConstants.PivotConstants.DEPLOY_ROTATIONS));
+       .whileTrue(m_intakeSubsystem.setPosition(IntakeConstants.PivotConstants.DEPLOY_ROTATIONS));
 
      m_driverController.rightTrigger()
       .whileTrue(
