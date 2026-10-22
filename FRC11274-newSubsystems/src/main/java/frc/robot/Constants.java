@@ -18,8 +18,8 @@ public final class Constants {
   public static final class SwerveDriveConstants {
     public static final double robotWidth = 0.508; // Distance between left and right wheels in meters
     public static final double robotLength = 0.442;  // Distance between front and back wheels in meters
-    public static final double kMaxSpeedMetersPerSecond = 3; // Maximum speed of the robot
-    public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI; // Maximum angular speed
+    public static final double kMaxSpeedMetersPerSecond = 6; // Maximum speed of the robot
+    public static final double kMaxAngularSpeedRadiansPerSecond = 6; // Maximum angular speed
 
 
 
@@ -39,8 +39,8 @@ public final class Constants {
 
     public static final int TICKS_PER_REVOLUTION = 4096;
 
-    public static final double MAX_DRIVE_SPEED = 1.3; // m/s MAX DRIVE SPEED
-    public static final double MAX_ROTATE_SPEED = 2; // rad/s MAX ROTATE SPEED
+    public static final double MAX_DRIVE_SPEED = 3; // m/s MAX DRIVE SPEED
+    public static final double MAX_ROTATE_SPEED = 5; // rad/s MAX ROTATE SPEED
     public static final double WHEEL_RADIUS = 0.051;
 
     public static final String CANbus = "rio";
