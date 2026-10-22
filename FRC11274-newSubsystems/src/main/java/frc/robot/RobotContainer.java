@@ -81,11 +81,11 @@ public class RobotContainer {
       //  .whileTrue(m_climberSubsystem.setDutyCycle(-0.3));
 
     //CLIMBING
-    m_driverController.povLeft()
-         .onTrue(m_climberSubsystem.setPosition(55, false));
+   // m_driverController.povLeft()
+     //    .onTrue(m_climberSubsystem.setPosition(55, false));
 
-    m_driverController.povRight()
-    .onTrue(m_climberSubsystem.setPosition(0, true));
+    // m_driverController.povRight()
+      // .onTrue(m_climberSubsystem.setPosition(0, true));
 
     // m_driverController.a().onTrue(m_climberSubsystem.switchLimitsCommand());
     // m_driverController.b().onTrue(m_climberSubsystem.setCurrentPosToZeroCommand());

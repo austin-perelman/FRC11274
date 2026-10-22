@@ -6,6 +6,8 @@ package frc.robot.commands;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -66,8 +68,13 @@ public class DriveWithJoystick extends Command {
   @Override
   public void execute() {
     // Translation (left stick), circular deadband
-    double xSpeed = m_controller.getLeftX();
-    double ySpeed = -m_controller.getLeftY();
+    var alliance = DriverStation.getAlliance();
+    int invert = 1;
+    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+      invert = -1;
+    }
+    double xSpeed = invert * m_controller.getLeftX();
+    double ySpeed = -invert * m_controller.getLeftY();
     if (Math.hypot(xSpeed, ySpeed) < OIConstants.CONTROLLER_DEADBAND) {
       xSpeed = 0.0;
       ySpeed = 0.0;

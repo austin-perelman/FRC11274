@@ -121,7 +121,8 @@ public final class Constants {
     public static final double[][] dataPoints = { //test data
       {1.24,32},
       {1.94,34},
-      {2.28,36},
+      {2.28,35},
+      {2.4,36},
       {2.8,37},
       {3.17,41},
       {3.75,44},
