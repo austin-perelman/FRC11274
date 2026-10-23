@@ -12,6 +12,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -48,7 +49,14 @@ public final class AutosContainer {
   private final PIDController yController = new PIDController(10.0, 0.0, 0.0);
   private final PIDController headingController = new PIDController(7.5, 0.0, 0.0);
 
-
+  public static int getFieldInversion() {
+      var alliance = DriverStation.getAlliance();
+      if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+        return -1;
+      }
+      return 1;
+    }
+  
   public AutosContainer(SwerveDriveSubsystem swerveDrive, TelemetrySubsystem telemetrySubsystem, ShooterSubsystem shooterSubsystem, IntakeSubsystem intakeSubsystem, ClimberSubsystem climberSubsystem) {
     m_swerveDriveSubsystem = swerveDrive;
     m_telemetrySubsystem = telemetrySubsystem;
