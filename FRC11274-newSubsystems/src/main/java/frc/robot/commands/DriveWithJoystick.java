@@ -11,6 +11,8 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import frc.robot.Robot;
+import frc.robot.RobotContainer;
 import frc.robot.Constants.OIConstants;
 import frc.robot.Constants.SwerveDriveConstants;
 import frc.robot.subsystems.SwerveDriveSubsystem;
@@ -68,13 +70,9 @@ public class DriveWithJoystick extends Command {
   @Override
   public void execute() {
     // Translation (left stick), circular deadband
-    var alliance = DriverStation.getAlliance();
-    int invert = 1;
-    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
-      invert = -1;
-    }
-    double xSpeed = invert * m_controller.getLeftX();
-    double ySpeed = -invert * m_controller.getLeftY();
+    
+    double xSpeed = RobotContainer.getFieldInversion() * m_controller.getLeftX();
+    double ySpeed = -RobotContainer.getFieldInversion() * m_controller.getLeftY();
     if (Math.hypot(xSpeed, ySpeed) < OIConstants.CONTROLLER_DEADBAND) {
       xSpeed = 0.0;
       ySpeed = 0.0;

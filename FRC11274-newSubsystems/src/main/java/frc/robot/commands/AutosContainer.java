@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.ParallelDeadlineGroup;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import frc.robot.RobotContainer;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.subsystems.ClimberSubsystem;
@@ -225,9 +226,9 @@ public final class AutosContainer {
 
     //m_telemetrySubsystem.resetPose(new Pose2d(BlueAllianceXPose, centerYPose, Rotation2d.fromDegrees(0)));
     //m_telemetrySubsystem.resetPose(new Pose2d(RedAllianceXPose, centerYPose, Rotation2d.fromDegrees(180)));
-    m_BlueLeftSimpleAuto   = shooterAutoFactory(new Pose2d(BlueAllianceXPose, leftYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime); // blue right
+    m_BlueRightSimpleAuto   = shooterAutoFactory(new Pose2d(BlueAllianceXPose, leftYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime); // blue right
     m_BlueCenterAuto = shooterAutoFactory(new Pose2d(BlueAllianceXPose, centerYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime);
-    m_BlueRightSimpleAuto  = shooterAutoFactory(new Pose2d(BlueAllianceXPose, rightYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime); // blue left
+    m_BlueLeftSimpleAuto  = shooterAutoFactory(new Pose2d(BlueAllianceXPose, rightYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime); // blue left
 
     m_RedLeftSimpleAuto    = shooterAutoFactory(new Pose2d(RedAllianceXPose, leftYPose, Rotation2d.fromDegrees(180)), driveSpeed, driveTime, shootTime);
     m_RedCenterAuto  = shooterAutoFactory(new Pose2d(RedAllianceXPose, centerYPose, Rotation2d.fromDegrees(180)), driveSpeed, driveTime, shootTime);
@@ -261,7 +262,7 @@ public final class AutosContainer {
     return Commands.sequence(
       Commands.runOnce(() -> m_telemetrySubsystem.resetPose(startPose)),
 
-      new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, 0.0, speed) // -speed for red simple autos
+      new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, 0.0, RobotContainer.getFieldInversion()*speed) // -speed for red simple autos
           .withTimeout(driveTime),
 
       Commands.runOnce(() -> m_swerveDriveSubsystem.drive(new ChassisSpeeds(0, 0, 0), true), m_swerveDriveSubsystem),
