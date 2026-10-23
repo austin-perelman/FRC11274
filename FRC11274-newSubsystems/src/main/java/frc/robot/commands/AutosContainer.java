@@ -114,6 +114,7 @@ public final class AutosContainer {
 
       new ParallelDeadlineGroup(
         new SequentialCommandGroup(
+          new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(314), toMeters(30), Rotation2d.fromDegrees(90)), 10, 2, 2, 0.15, 5),
           new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(314), toMeters(145), Rotation2d.fromDegrees(90)), 10, 2, 2, 0.15, 5),
           new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(244), toMeters(49), Rotation2d.fromDegrees(-113)), 10, 2, 2, 0.1, 5)
         ),
@@ -174,20 +175,21 @@ public final class AutosContainer {
     );
 
   m_RedRightAuto = new SequentialCommandGroup(
-      Commands.runOnce(() -> m_telemetrySubsystem.resetPose(new Pose2d(toMeters(651-158), toMeters(317-20), Rotation2d.fromDegrees(0)))),
+      Commands.runOnce(() -> m_telemetrySubsystem.resetPose(new Pose2d(toMeters(651-158), toMeters(317-20), Rotation2d.fromDegrees(180)))),
       intakeSubsystem.intakeDown(),
-      new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-314), toMeters(317-21), Rotation2d.fromDegrees(0)), 10.0, 4.5, 4.0, 0.15, 5),
+      new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-314), toMeters(317-21), Rotation2d.fromDegrees(180)), 10.0, 4.5, 4.0, 0.15, 5),
 
       new ParallelDeadlineGroup(
         new SequentialCommandGroup(
-          new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-314), toMeters(317-135), Rotation2d.fromDegrees(90)), 10, 2, 3, 0.15, 5),
-          new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-244), toMeters(317-49), Rotation2d.fromDegrees(-113)), 10, 2, 3, 0.1, 5)
+          new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-314), toMeters(317-30), Rotation2d.fromDegrees(-90)), 10, 2, 3, 0.15, 5),
+          new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-314), toMeters(317-135), Rotation2d.fromDegrees(-90)), 10, 2, 3, 0.15, 5),
+          new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-244), toMeters(317-49), Rotation2d.fromDegrees(180-113)), 10, 2, 3, 0.1, 5)
         ),
         intakeSubsystem.setRollerVelocity(-IntakeConstants.RollerConstants.ROLLER_RPS)
       ),
 
-      new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-230), toMeters(317-27), Rotation2d.fromDegrees(0)), 10, 4.5, 4, 0.05, 5),
-      new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-120), toMeters(317-27), Rotation2d.fromDegrees(0)), 10, 4.5, 4, 0.1, 5),
+      new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-230), toMeters(317-27), Rotation2d.fromDegrees(180)), 10, 4.5, 4, 0.05, 5),
+      new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-120), toMeters(317-27), Rotation2d.fromDegrees(180)), 10, 4.5, 4, 0.1, 5),
       new MoveToTargetAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, new Pose2d(toMeters(651-120), toMeters(317-75), Rotation2d.fromDegrees(55)), 10, 4.5, 4, 0.1, 5),
       //new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem).withTimeout(0.5),
       shooterSubsystem.shootSequence(ShooterConstants.FEEDER_SPEED, 38).withTimeout(5).alongWith(intakeSubsystem.oscillate()),
@@ -223,9 +225,9 @@ public final class AutosContainer {
 
     //m_telemetrySubsystem.resetPose(new Pose2d(BlueAllianceXPose, centerYPose, Rotation2d.fromDegrees(0)));
     //m_telemetrySubsystem.resetPose(new Pose2d(RedAllianceXPose, centerYPose, Rotation2d.fromDegrees(180)));
-    m_BlueLeftSimpleAuto   = shooterAutoFactory(new Pose2d(BlueAllianceXPose, leftYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime);
+    m_BlueLeftSimpleAuto   = shooterAutoFactory(new Pose2d(BlueAllianceXPose, leftYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime); // blue right
     m_BlueCenterAuto = shooterAutoFactory(new Pose2d(BlueAllianceXPose, centerYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime);
-    m_BlueRightSimpleAuto  = shooterAutoFactory(new Pose2d(BlueAllianceXPose, rightYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime);
+    m_BlueRightSimpleAuto  = shooterAutoFactory(new Pose2d(BlueAllianceXPose, rightYPose, Rotation2d.fromDegrees(0)), driveSpeed, driveTime, shootTime); // blue left
 
     m_RedLeftSimpleAuto    = shooterAutoFactory(new Pose2d(RedAllianceXPose, leftYPose, Rotation2d.fromDegrees(180)), driveSpeed, driveTime, shootTime);
     m_RedCenterAuto  = shooterAutoFactory(new Pose2d(RedAllianceXPose, centerYPose, Rotation2d.fromDegrees(180)), driveSpeed, driveTime, shootTime);
@@ -259,7 +261,7 @@ public final class AutosContainer {
     return Commands.sequence(
       Commands.runOnce(() -> m_telemetrySubsystem.resetPose(startPose)),
 
-      new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, 0.0, speed)
+      new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, 0.0, speed) // -speed for red simple autos
           .withTimeout(driveTime),
 
       Commands.runOnce(() -> m_swerveDriveSubsystem.drive(new ChassisSpeeds(0, 0, 0), true), m_swerveDriveSubsystem),

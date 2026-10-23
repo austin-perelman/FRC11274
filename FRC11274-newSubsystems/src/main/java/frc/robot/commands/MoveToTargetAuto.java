@@ -71,13 +71,13 @@ public class MoveToTargetAuto extends Command {
 
     if(m_telemetrySubsystem.getAlliance() == DriverStation.Alliance.Blue){
       m_swerveDrive.drive(
-         new ChassisSpeeds(-yVelocity, xVelocity, -thetaVelocity), 
+         new ChassisSpeeds(yVelocity, xVelocity, -thetaVelocity), 
         true
       );
     }
     else{
       m_swerveDrive.drive(
-         new ChassisSpeeds(yVelocity, -xVelocity, -thetaVelocity), 
+         new ChassisSpeeds(-yVelocity, xVelocity, -thetaVelocity), 
         true
       );
     }

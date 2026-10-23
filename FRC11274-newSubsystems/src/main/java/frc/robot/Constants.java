@@ -18,8 +18,8 @@ public final class Constants {
   public static final class SwerveDriveConstants {
     public static final double robotWidth = 0.508; // Distance between left and right wheels in meters
     public static final double robotLength = 0.442;  // Distance between front and back wheels in meters
-    public static final double kMaxSpeedMetersPerSecond = 6; // Maximum speed of the robot
-    public static final double kMaxAngularSpeedRadiansPerSecond = 6; // Maximum angular speed
+    public static final double kMaxSpeedMetersPerSecond = 3; // Maximum speed of the robot
+    public static final double kMaxAngularSpeedRadiansPerSecond = Math.PI; // Maximum angular speed
 
 
 
