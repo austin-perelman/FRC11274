@@ -19,7 +19,7 @@ public class AlignToHubAuto extends Command {
   /** Flip to +1.0 if the robot turns AWAY from the hub while aligning. */
   private static final double ALIGN_SIGN = -1.0;
   /** Output (normalized, 1.0 = MAX_ROTATE_SPEED) per degree of error. */
-  private static final double ALIGN_KP = 0.06;
+  private static final double ALIGN_KP = 0.01;
   /** Minimum output while far from the target, enough to overcome friction. */
   private static final double ALIGN_MIN_OUT = 0.30;
   /** Extra min output only used for the last few degrees so it finishes the turn. */
@@ -27,7 +27,7 @@ public class AlignToHubAuto extends Command {
   /** Use the large min-output only when farther than this. */
   private static final double ALIGN_COARSE_DEG = 8.0;
   /** Stop turning once within this many degrees of the target. */
-  private static final double ALIGN_TOL_DEG = 0.75;
+  private static final double ALIGN_TOL_DEG = 1.5;
 
   private final SwerveDriveSubsystem m_swerveDrive;
   private final TelemetrySubsystem m_telemetry;

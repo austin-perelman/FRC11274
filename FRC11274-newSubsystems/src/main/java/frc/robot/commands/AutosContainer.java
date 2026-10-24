@@ -270,7 +270,7 @@ public final class AutosContainer {
     return Commands.sequence(
       Commands.runOnce(() -> m_telemetrySubsystem.resetPose(startPose)),
 
-      new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, 0.0, RobotContainer.getFieldInversion()*speed) // -speed for red simple autos
+      new AlignToHubAuto(m_swerveDriveSubsystem, m_telemetrySubsystem, 0.0, AutosContainer.getFieldInversion()*speed) // -speed for red simple autos
           .withTimeout(driveTime),
 
       Commands.runOnce(() -> m_swerveDriveSubsystem.drive(new ChassisSpeeds(0, 0, 0), true), m_swerveDriveSubsystem),

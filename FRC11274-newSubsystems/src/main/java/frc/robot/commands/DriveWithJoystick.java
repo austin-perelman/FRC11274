@@ -71,8 +71,13 @@ public class DriveWithJoystick extends Command {
   public void execute() {
     // Translation (left stick), circular deadband
     
-    double xSpeed = RobotContainer.getFieldInversion() * m_controller.getLeftX();
-    double ySpeed = -RobotContainer.getFieldInversion() * m_controller.getLeftY();
+    var alliance = DriverStation.getAlliance();
+    int invert = 1;
+    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+      invert = -1;
+    }
+    double xSpeed = invert * m_controller.getLeftX();
+    double ySpeed = -invert * m_controller.getLeftY();
     if (Math.hypot(xSpeed, ySpeed) < OIConstants.CONTROLLER_DEADBAND) {
       xSpeed = 0.0;
       ySpeed = 0.0;

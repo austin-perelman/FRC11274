@@ -6,10 +6,16 @@
     "Retained Values": {
       "open": false
     },
+    "retained": {
+      "SmartDashboard": {
+        "Auto Chooser": {
+          "open": true
+        }
+      }
+    },
     "transitory": {
       "SmartDashboard": {
         "Auto Chooser": {
-          "open": true,
           "string[]##v_/SmartDashboard/Auto Chooser/options": {
             "open": true
           }
@@ -43,9 +49,6 @@
         }
       }
     }
-  },
-  "NetworkTables Info": {
-    "visible": true
   },
   "NetworkTables Settings": {
     "mode": "Client (NT4)",

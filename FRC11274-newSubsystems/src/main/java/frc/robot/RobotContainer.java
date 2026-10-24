@@ -188,13 +188,7 @@ public class RobotContainer {
   public void seedPoseFromVision() {
   m_telemetrySubsystem.seedPoseFromVision();
 }
-  public static int getFieldInversion() {
-    var alliance = DriverStation.getAlliance();
-    if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
-      return -1;
-    }
-    return 1;
-  }
+
   public Command getAutonomousCommand() {
     return m_autosContainer.getSelectedAuto();
   }
